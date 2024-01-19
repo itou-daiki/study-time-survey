@@ -1,31 +1,69 @@
-# Streamlitライブラリをインポート
 import streamlit as st
+import numpy as np
+import pandas as pd
+import plotly.express as px
 
-# ページ設定（タブに表示されるタイトル、表示幅）
-st.set_page_config(page_title="タイトル", layout="wide")
+# Streamlitアプリの設定
+st.set_page_config(page_title="学習時間調査分析")
 
-# タイトルを設定
-st.title('Streamlitのサンプルアプリ')
+# アプリケーションのタイトルと説明
+st.title("学習時間調査分析")
+st.caption("Created by Dit-Lab.(Daiki Ito)")
 
-# テキスト入力ボックスを作成し、ユーザーからの入力を受け取る
-user_input = st.text_input('あなたの名前を入力してください')
+# ファイルアップローダー
+uploaded_file = st.file_uploader('Excelファイルをアップロードしてください', type=['xlsx'])
 
-# ボタンを作成し、クリックされたらメッセージを表示
-if st.button('挨拶する'):
-    if user_input:  # 名前が入力されているかチェック
-        st.success(f'🌟 こんにちは、{user_input}さん! 🌟')  # メッセージをハイライト
-    else:
-        st.error('名前を入力してください。')  # エラーメッセージを表示
+# データフレームの作成
+df = None
 
-# スライダーを作成し、値を選択
-number = st.slider('好きな数字（10進数）を選んでください', 0, 100)
+if uploaded_file is not None:
+    df = pd.read_excel(uploaded_file)
+    
+    # 全ての列が空の列を削除
+    empty_columns = df.columns[df.isna().all()].tolist()
+    df = df.dropna(axis=1, how='all')
+    
+    st.write(df.head())
+    
+    st.subheader('分析データの選択')
 
-# 補足メッセージ
-st.caption("十字キー（左右）でも調整できます。")
+    # カテゴリ変数の抽出
+    categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+    # 数値変数の抽出
+    numerical_cols = df.select_dtypes(exclude=['object', 'category']).columns.tolist()
 
-# 選択した数字を表示
-st.write(f'あなたが選んだ数字は「{number}」です。')
+    # 学年・クラスデータの選択
+    st.subheader("学年・クラスデータの選択")
+    
+    # カテゴリデータがない場合の処理
+    if len(categorical_cols) == 0:
+        st.error('カテゴリ（文字列）データがありません')
+        st.stop()
+    
+    grade = st.multiselect('学年を示す列を選択してください', categorical_cols,max_selections=1)
+    group = st.multiselect('クラスを示す列を選択してください', categorical_cols,max_selections=1)
+      
+    # 数値データがない場合の処理
+    if len(numerical_cols) == 0:
+        st.error('数値データがありません')
+        st.stop()
 
-# 選択した数値を2進数に変換
-binary_representation = bin(number)[2:]  # 'bin'関数で2進数に変換し、先頭の'0b'を取り除く
-st.info(f'🔢 10進数の「{number}」を2進数で表現すると「{binary_representation}」になります。 🔢')  # 2進数の表示をハイライト
+    # 分析用データの抽出
+    st.subheader("平日の学習時間データの選択")
+    weekdays = st.multiselect('分析に使用する平日の学習時間データを選択してください', numerical_cols)
+    st.subheader("休日の学習時間データの選択")
+    holidays = st.multiselect('分析に使用する休日の学習時間データを選択してください', numerical_cols)
+
+    # 選択したデータのみを抽出し、表示する
+    temp_df = df[[*grade, *group, *weekdays, *holidays]]
+    
+    #temp_dfをセッションに保存
+    st.session_state.temp_df = temp_df
+    
+    # 分析用データの表示
+    st.subheader("分析用データ")
+    st.write(temp_df)
+    
+    # 分析実行ボタンの表示
+    if st.button('分析実行'):
+        st.subheader("分析結果")
