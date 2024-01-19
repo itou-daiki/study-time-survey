@@ -67,6 +67,8 @@ if uploaded_file is not None:
     # 分析実行ボタンの表示
     if st.button('分析実行'):
         st.subheader("分析結果")
-        # 学年ごとの平日・休日の学習時間ｗの平均値を算出
+        # 学年ごとの平日・休日の学習時間の平均値を算出
+        mean_df = temp_df.groupby(grade)
+        st.write(mean_df)
         mean_df = temp_df.groupby(grade).mean()
         st.write(mean_df)
